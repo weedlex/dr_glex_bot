@@ -1,4 +1,4 @@
-
+import os
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     ApplicationBuilder,
@@ -8,24 +8,44 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
-import os
 
-TOKEN = os.environ.get("8086101210:AAEOktQEloXrMZ2Iiw9kEjEytaTCHmp9AHA")
-ADMIN_CHAT_ID = int(os.environ.get("669369162"))
+# -----------------------
+# Переменные окружения
+# -----------------------
+TOKEN = os.environ.get("BOT_TOKEN")  # Добавьте BOT_TOKEN на Render
+ADMIN_CHAT_ID = int(os.environ.get("ADMIN_CHAT_ID"))  # Добавьте ADMIN_CHAT_ID на Render
 
+# Проверка
+if not TOKEN or not ADMIN_CHAT_ID:
+    raise ValueError("Необходимо установить переменные окружения BOT_TOKEN и ADMIN_CHAT_ID")
+
+# -----------------------
+# Константы опроса
+# -----------------------
 (Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10, Q11, Q12, Q13, Q14, Q15, Q16, Q17) = range(17)
 
 survey_keyboard = ReplyKeyboardMarkup([["Отмена"]], resize_keyboard=True)
 
+# -----------------------
+# Команды бота
+# -----------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = ReplyKeyboardMarkup([["Начать опрос"], ["О вакансии"]], resize_keyboard=True)
-    await update.message.reply_text("Привет! Я чат-бот dr.glex 👋\nГотов провести опрос кандидата.", reply_markup=keyboard)
+    await update.message.reply_text(
+        "Привет! Я чат-бот dr.glex 👋\nГотов провести опрос кандидата.",
+        reply_markup=keyboard
+    )
 
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📌 Вакансия: помощник ортодонта\n• Аккуратность\n• Внимательность\n• Желание учиться")
+    await update.message.reply_text(
+        "📌 Вакансия: помощник ортодонта\n• Аккуратность\n• Внимательность\n• Желание учиться"
+    )
 
 async def start_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("1️⃣ Почему вы выбрали направление стоматологии?", reply_markup=survey_keyboard)
+    await update.message.reply_text(
+        "1️⃣ Почему вы выбрали направление стоматологии?",
+        reply_markup=survey_keyboard
+    )
     return Q1
 
 async def ask_next(update, context, question_text, next_state, key):
@@ -33,7 +53,9 @@ async def ask_next(update, context, question_text, next_state, key):
     await update.message.reply_text(question_text, reply_markup=survey_keyboard)
     return next_state
 
-# Вопросы
+# -----------------------
+# Вопросы опросника
+# -----------------------
 async def q1(update, context): return await ask_next(update, context, "2️⃣ В каком возрасте и при каких обстоятельствах вы приняли решение поступать в медицинский вуз/колледж?", Q2, "q1")
 async def q2(update, context): return await ask_next(update, context, "3️⃣ Почему вы выбрали именно ортодонтию как профиль? Что вас в ней привлекает?", Q3, "q2")
 async def q3(update, context): return await ask_next(update, context, "4️⃣ Какие профессиональные цели вы ставите перед собой на ближайшие 3–5 лет?", Q4, "q3")
@@ -62,16 +84,22 @@ async def cancel(update, context):
     await update.message.reply_text("Опрос отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
+# -----------------------
+# Основная функция
+# -----------------------
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
+
     conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex("Начать опрос"), start_survey)],
         states={i: [MessageHandler(filters.TEXT & ~filters.COMMAND, globals()[f"q{i+1}"])] for i in range(17)},
         fallbacks=[MessageHandler(filters.Regex("Отмена"), cancel)]
     )
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Regex("О вакансии"), info))
     app.add_handler(conv_handler)
+
     app.run_polling()
 
 if __name__ == "__main__":
